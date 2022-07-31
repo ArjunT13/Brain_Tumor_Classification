@@ -1,0 +1,82 @@
+from tensorflow.keras.callbacks import EarlyStopping
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Dropout
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+
+generator_train = ImageDataGenerator(rescale=1./255,
+                                    featurewise_center=False,
+                                    samplewise_center=False,
+                                    featurewise_std_normalization=False,
+                                    samplewise_std_normalization=False,
+                                    zca_whitening=False,
+                                    rotation_range=0,
+                                    zoom_range = 0,
+                                    width_shift_range=0,
+                                    height_shift_range=0,
+                                    horizontal_flip=True,
+                                    vertical_flip=False) 
+
+generator_test = ImageDataGenerator(rescale=1./255,
+                                    featurewise_center=False,
+                                    samplewise_center=False,
+                                    featurewise_std_normalization=False,
+                                    samplewise_std_normalization=False,
+                                    zca_whitening=False,
+                                    rotation_range=0,
+                                    zoom_range = 0,
+                                    width_shift_range=0,
+                                    height_shift_range=0,
+                                    horizontal_flip=True,
+                                    vertical_flip=False)
+
+
+train = generator_train.flow_from_directory('./Training', target_size=(64,64),
+                                              batch_size=32, class_mode= "categorical", color_mode='grayscale')
+
+test = generator_test.flow_from_directory('./Testing', target_size=(64,64),
+                                              batch_size=32, class_mode= "categorical", color_mode='grayscale')
+
+model1 = Sequential()
+
+# Convolutional layer 1
+model1.add(Conv2D(32,(3,3), input_shape=(64, 64, 1), activation='relu'))
+model1.add(BatchNormalization())
+model1.add(MaxPooling2D(pool_size=(2,2)))
+
+# Convolutional layer 2
+model1.add(Conv2D(32,(3,3), activation='relu'))
+model1.add(BatchNormalization())
+model1.add(MaxPooling2D(pool_size=(2,2)))
+
+model1.add(Flatten())
+
+model1.add(Dense(units= 252, activation='relu'))
+model1.add(Dropout(0.2))
+model1.add(Dense(units=252, activation='relu'))
+model1.add(Dropout(0.2))
+model1.add(Dense(units=4, activation='softmax'))
+
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, decay=0.0001, clipvalue=0.5)
+model1.compile(optimizer=optimizer, loss='categorical_crossentropy',
+                   metrics= ['categorical_accuracy'])
+
+#model1.summary()
+
+model1_es = EarlyStopping(monitor = 'loss', min_delta = 1e-11, patience = 12, verbose = 1)
+model1_rlr = ReduceLROnPlateau(monitor = 'val_loss', factor = 0.2, patience = 6, verbose = 1)
+
+# Automatically saves the best weights of the model, based on best val_accuracy
+model1_mcp = ModelCheckpoint(filepath = 'model1_weights.h5', monitor = 'val_categorical_accuracy', 
+                      save_best_only = True, verbose = 1)
+
+# Fiting the model.
+history1 = model1.fit(train, steps_per_epoch=5712//32, epochs=50, validation_data=test, validation_steps= 1311//32,
+                     callbacks=[model1_es, model1_rlr, model1_mcp])
+
+# Model held for testing
+model_evaluation = model1.evaluate(test)
