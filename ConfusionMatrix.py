@@ -39,6 +39,7 @@ for i in test_paths:
     label = i.split('/')[-2]
     actual.append(label)
 
+#Classification Report
 print(classification_report(actual, pred, target_names=categories))
 
 data = {'y_Actual':    actual,
@@ -47,6 +48,7 @@ data = {'y_Actual':    actual,
 df = pd.DataFrame(data, columns=['y_Actual','y_Predicted'])
 confusion_matrix1 = pd.crosstab(df['y_Actual'], df['y_Predicted'], rownames=['Actual'], colnames=['Predicted'], margins = True)
 
+#Confusion Matrix Heatmap
 plt.figure(figsize=(10,5))
 sns.heatmap(confusion_matrix1, fmt="d", annot=True)
 plt.title('Confusion Matrix')
